@@ -11,78 +11,68 @@ import cors from "cors";
 import morgan from "morgan";
 import path from "path";
 import { fileURLToPath } from "url";
+import axios from "axios";
 
 import notFound from "./middleware/notFound.js";
 import errorHandler from "./middleware/errorHandler.js";
-
-import axios from "axios";
-
 
 dotenv.config();
 connectDB();
 
 const app = express();
 
-// Middleware
-app.use(express.json({ limit: "20mb" })); // ✅ allow base64 uploads
+// =================== MIDDLEWARE ===================
+app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
-// Dev logging
 if (process.env.NODE_ENV !== "production") {
   app.use(morgan("dev"));
 }
 
-// CORS for frontend access
+// =================== CORS ===================
 app.use(
   cors({
     origin: [
-      "http://localhost:5173", // local dev
-      "https://www.havilaheyecare.com", // ✅ add your production domain later
+      "http://localhost:5173", // Dev
+      "https://www.havilaheyecare.com", // ✅ Production domain
     ],
     credentials: true,
   })
 );
 
-// Routes
+// =================== API ROUTES ===================
 app.use("/api/auth", authRoutes);
 app.use("/api/blog", blogRoutes);
 app.use("/api/testimonials", testimonialRoutes);
-app.use("/api/upload", uploadRoutes); // ✅ Cloudinary upload route
+app.use("/api/upload", uploadRoutes);
 
-// ES module dirname fix
+// =================== DIRNAME FIX ===================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ❌ No longer needed since Cloudinary stores all uploads
-// app.use("/uploads", express.static(path.join(__dirname, "/uploads")));
-// Serve frontend (Vite build)
-const frontendPath = path.join(__dirname, "/frontend/dist"); // Adjust if your build folder name differs
-app.use(express.static(frontendPath));
-
-// All non-API routes → React router
-app.get("*", (req, res) => {
-  res.sendFile(path.resolve(frontendPath, "index.html"));
-});
-
-// Error Handling
-app.use(notFound);
-app.use(errorHandler);
-
-
-// =================== PRODUCTION SETTINGS ===================
-
-// Serve frontend (optional if hosting backend + frontend separately)
+// =================== FRONTEND SERVE ===================
 if (process.env.NODE_ENV === "production") {
+  // Serve built Vite frontend
+  const frontendPath = path.join(__dirname, "../frontend/dist");
+  app.use(express.static(frontendPath));
+
+  // ✅ Catch-all route for React Router
+  app.get("/*", (req, res) => {
+    res.sendFile(path.resolve(frontendPath, "index.html"));
+  });
+} else {
+  // ✅ For local testing
   app.get("/", (req, res) => {
-    res.send("✅ API running smoothly on Render!");
+    res.send("API is running locally...");
   });
 }
 
+// =================== ERROR HANDLERS ===================
+app.use(notFound);
+app.use(errorHandler);
+
 // =================== KEEP BACKEND AWAKE ===================
-// This ensures Render does not sleep your API or MongoDB connection
-
 const WAKE_URL = process.env.RENDER_URL || "https://api.havilaheyecare.com";
-
 setInterval(async () => {
   try {
     await axios.get(WAKE_URL);
@@ -90,10 +80,9 @@ setInterval(async () => {
   } catch (err) {
     console.log("⚠️ Wake-up ping failed:", err.message);
   }
-}, 10 * 60 * 1000); // ping every 14 minutes
+}, 14 * 60 * 1000); // every 14 minutes
 
-
-// Start server
+// =================== START SERVER ===================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
