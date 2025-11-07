@@ -14,6 +14,10 @@ import axios from "axios";
 import notFound from "./middleware/notFound.js";
 import errorHandler from "./middleware/errorHandler.js";
 
+import path from "path";
+import { fileURLToPath } from "url";
+
+
 dotenv.config();
 connectDB();
 
