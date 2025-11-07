@@ -28,12 +28,33 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 // =================== CORS ===================
+// app.use(
+//   cors({
+//     origin: [
+//       "http://localhost:5173", // Dev
+//       "https://www.havilaheyecare.com", // ✅ Your production domain
+//     ],
+//     credentials: true,
+//   })
+// );
+// =================== CORS ===================
+const allowedOrigins = [
+  "http://localhost:5173", // Local dev
+  "https://havilaheyecare.com", // ✅ Your actual live frontend
+  "https://www.havilaheyecare.com", // Just in case both work
+];
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173", // Dev
-      "https://www.havilaheyecare.com", // ✅ Your production domain
-    ],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
