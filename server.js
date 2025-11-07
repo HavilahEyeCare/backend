@@ -74,17 +74,22 @@ app.get("/", (req, res) => {
   res.send("✅ Havilah Eye Care API is running...");
 });
 
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = path.dirname(__filename);
+/import path from "path";
+import { fileURLToPath } from "url";
 
-// if (process.env.NODE_ENV === "production") {
-//   const frontendPath = path.join(__dirname, "public_html");
-//   app.use(express.static(frontendPath));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-//   app.get("*", (req, res) =>
-//     res.sendFile(path.resolve(frontendPath, "index.html"))
-//   );
-// }
+if (process.env.NODE_ENV === "production") {
+  const frontendPath = path.join(__dirname, "public_html"); // where you put your built React files
+  app.use(express.static(frontendPath));
+
+  // This handles all React routes and serves index.html
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(frontendPath, "index.html"));
+  });
+}
+
 
 // =================== ERROR HANDLERS ===================
 app.use(notFound);
