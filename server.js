@@ -9,8 +9,6 @@ import uploadRoutes from "./routes/uploadRoutes.js";
 
 import cors from "cors";
 import morgan from "morgan";
-import path from "path";
-import { fileURLToPath } from "url";
 import axios from "axios";
 
 import notFound from "./middleware/notFound.js";
@@ -34,7 +32,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173", // Dev
-      "https://www.havilaheyecare.com", // ✅ Production domain
+      "https://www.havilaheyecare.com", // ✅ Your production domain
     ],
     credentials: true,
   })
@@ -46,33 +44,17 @@ app.use("/api/blog", blogRoutes);
 app.use("/api/testimonials", testimonialRoutes);
 app.use("/api/upload", uploadRoutes);
 
-// =================== DIRNAME FIX ===================
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// =================== FRONTEND SERVE ===================
-if (process.env.NODE_ENV === "production") {
-  // Serve built Vite frontend
-  const frontendPath = path.join(__dirname, "../frontend/dist");
-  app.use(express.static(frontendPath));
-
-  // ✅ Catch-all route for React Router
-  app.get("/*", (req, res) => {
-    res.sendFile(path.resolve(frontendPath, "index.html"));
-  });
-} else {
-  // ✅ For local testing
-  app.get("/", (req, res) => {
-    res.send("API is running locally...");
-  });
-}
+// =================== BASE TEST ROUTE ===================
+app.get("/", (req, res) => {
+  res.send("✅ Havilah Eye Care API is running...");
+});
 
 // =================== ERROR HANDLERS ===================
 app.use(notFound);
 app.use(errorHandler);
 
 // =================== KEEP BACKEND AWAKE ===================
-const WAKE_URL = process.env.RENDER_URL || "https://api.havilaheyecare.com";
+const WAKE_URL = process.env.RENDER_URL || "https://backend-x0u1.onrender.com";
 setInterval(async () => {
   try {
     await axios.get(WAKE_URL);
