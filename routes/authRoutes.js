@@ -10,7 +10,7 @@ import { getAllUsers, deleteUser } from "../controllers/authController.js";
 const router = express.Router();
 
 router.post("/register", protect,  adminOnly, registerUser);
-router.post("/login", loginUser);
+router.post("/auth/login", loginUser);
 router.get("/me", protect, getMe);
 
 // ...
