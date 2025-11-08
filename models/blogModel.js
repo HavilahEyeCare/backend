@@ -7,9 +7,10 @@ const sectionSchema = new mongoose.Schema({
   subheading: { type: String, trim: true },
   content: { type: String, trim: true },
   list: [{ type: String, trim: true }],
-  images: [{ type: String, trim: true }], // ✅ store Cloudinary URLs
+  images: [{ type: String, trim: true }], // store Cloudinary URLs
 });
 
+// Main BlogPost schema
 const blogPostSchema = new mongoose.Schema(
   {
     title: {
@@ -28,11 +29,11 @@ const blogPostSchema = new mongoose.Schema(
     excerpt: {
       type: String,
       trim: true,
+      default: "",
     },
 
     sections: [sectionSchema],
 
-    // ✅ cover image now defaults to a hosted fallback URL (Cloudinary or CDN)
     coverImage: {
       type: String,
       default:
@@ -49,7 +50,7 @@ const blogPostSchema = new mongoose.Schema(
         "Technology",
         "General Health",
       ],
-      required: true,
+      required: [true, "Please select a category"],
     },
 
     author: {
@@ -68,7 +69,7 @@ const blogPostSchema = new mongoose.Schema(
       default: true,
     },
 
-    // ✅ optional: keep Cloudinary public_id if you want to support deletion
+    // Optional: keep Cloudinary public_id for deletion support
     coverPublicId: {
       type: String,
       trim: true,
@@ -77,13 +78,14 @@ const blogPostSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Auto-generate slug from title
+// Auto-generate slug from title before saving
 blogPostSchema.pre("save", function (next) {
-  if (this.isModified("title")) {
+  if (this.isModified("title") || !this.slug) {
     this.slug = slugify(this.title, { lower: true, strict: true });
   }
   next();
 });
 
 const BlogPost = mongoose.model("BlogPost", blogPostSchema);
+
 export default BlogPost;

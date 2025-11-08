@@ -1,37 +1,35 @@
 import multer from "multer";
 import path from "path";
 
-// Storage config
+// ✅ Storage configuration
 const storage = multer.diskStorage({
   destination(req, file, cb) {
     cb(null, "uploads/"); // folder where files will be saved
   },
   filename(req, file, cb) {
-    cb(
-      null,
-      `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`
-    );
+    const timestamp = Date.now();
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `${file.fieldname}-${timestamp}${ext}`);
   },
 });
 
-// File filter (accept only images)
+// ✅ File filter to allow only images
 function checkFileType(file, cb) {
-  const filetypes = /jpg|jpeg|png/;
-  const extname = filetypes.test(
-    path.extname(file.originalname).toLowerCase()
-  );
-  const mimetype = filetypes.test(file.mimetype);
+  const allowedTypes = /jpg|jpeg|png/;
+  const extMatches = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimeMatches = allowedTypes.test(file.mimetype);
 
-  if (extname && mimetype) {
-    return cb(null, true);
+  if (extMatches && mimeMatches) {
+    cb(null, true);
   } else {
-    cb("Images only!");
+    cb(new Error("Only JPG, JPEG, and PNG images are allowed"));
   }
 }
 
+// ✅ Multer upload instance
 const upload = multer({
   storage,
-  fileFilter: function (req, file, cb) {
+  fileFilter: (req, file, cb) => {
     checkFileType(file, cb);
   },
 });

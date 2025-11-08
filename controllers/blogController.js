@@ -5,7 +5,7 @@ import cloudinary from "../config/cloudinaryConfig.js";
 
 /**
  * @desc    Create a new blog post
- * @route   POST /api/blog
+ * @route   POST /blog
  * @access  Private (staff/admin)
  */
 export const createPost = asyncHandler(async (req, res) => {
@@ -32,17 +32,22 @@ export const createPost = asyncHandler(async (req, res) => {
     }
   }
 
-  // ✅ Upload cover image to Cloudinary if it’s a Base64 or local file
-  let uploadedCover = null;
+  let uploadedCover = coverImage;
+
   if (coverImage && coverImage.startsWith("data:image")) {
-    const uploadResult = await cloudinary.uploader.upload(coverImage, {
-      folder: "havilah_blog/covers",
-      transformation: [{ quality: "auto", fetch_format: "auto" }],
-    });
-    uploadedCover = uploadResult.secure_url;
+    try {
+      const uploadResult = await cloudinary.uploader.upload(coverImage, {
+        folder: "havilah_blog/covers",
+        transformation: [{ quality: "auto", fetch_format: "auto" }],
+      });
+      uploadedCover = uploadResult.secure_url;
+    } catch (err) {
+      console.error("Cloudinary upload failed:", err.message);
+      res.status(500);
+      throw new Error("Failed to upload cover image");
+    }
   }
 
-  // ✅ Auto-generate slug
   const slug = slugify(title, { lower: true, strict: true });
 
   const post = await BlogPost.create({
@@ -51,7 +56,7 @@ export const createPost = asyncHandler(async (req, res) => {
     excerpt: excerpt || "",
     category,
     sections: parsedSections,
-    coverImage: uploadedCover || coverImage || undefined,
+    coverImage: uploadedCover,
     author: req.user._id,
   });
 
@@ -59,20 +64,31 @@ export const createPost = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Get all posts
- * @route   GET /api/blog
+ * @desc    Get all posts with pagination
+ * @route   GET /blog
  * @access  Public
  */
 export const getPosts = asyncHandler(async (req, res) => {
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
+  const sort =
+    req.query.sort === "newest" || !req.query.sort
+      ? { createdAt: -1 }
+      : { createdAt: 1 };
+
+  const count = await BlogPost.countDocuments();
   const posts = await BlogPost.find({})
     .populate("author", "name email")
-    .sort({ createdAt: -1 });
-  res.json(posts);
+    .sort(sort)
+    .skip((page - 1) * limit)
+    .limit(limit);
+
+  res.json({ posts, page, pages: Math.ceil(count / limit) });
 });
 
 /**
  * @desc    Get single post by slug
- * @route   GET /api/blog/slug/:slug
+ * @route   GET /blog/:slug
  * @access  Public
  */
 export const getPostBySlug = asyncHandler(async (req, res) => {
@@ -91,7 +107,7 @@ export const getPostBySlug = asyncHandler(async (req, res) => {
 
 /**
  * @desc    Update a post
- * @route   PUT /api/blog/:id
+ * @route   PUT /blog/:id
  * @access  Private (staff/admin)
  */
 export const updatePost = asyncHandler(async (req, res) => {
@@ -121,15 +137,20 @@ export const updatePost = asyncHandler(async (req, res) => {
     }
   }
 
-  // ✅ Upload new cover image if a base64 string is sent
   if (coverImage && coverImage.startsWith("data:image")) {
-    const uploadResult = await cloudinary.uploader.upload(coverImage, {
-      folder: "havilah_blog/covers",
-      transformation: [{ quality: "auto", fetch_format: "auto" }],
-    });
-    post.coverImage = uploadResult.secure_url;
+    try {
+      const uploadResult = await cloudinary.uploader.upload(coverImage, {
+        folder: "havilah_blog/covers",
+        transformation: [{ quality: "auto", fetch_format: "auto" }],
+      });
+      post.coverImage = uploadResult.secure_url;
+    } catch (err) {
+      console.error("Cloudinary upload failed:", err.message);
+      res.status(500);
+      throw new Error("Failed to upload cover image");
+    }
   } else if (coverImage) {
-    post.coverImage = coverImage; // in case it’s already a Cloudinary URL
+    post.coverImage = coverImage;
   }
 
   const updatedPost = await post.save();
@@ -138,7 +159,7 @@ export const updatePost = asyncHandler(async (req, res) => {
 
 /**
  * @desc    Delete a post
- * @route   DELETE /api/blog/:id
+ * @route   DELETE /blog/:id
  * @access  Private (admin only)
  */
 export const deletePost = asyncHandler(async (req, res) => {
@@ -148,9 +169,9 @@ export const deletePost = asyncHandler(async (req, res) => {
     throw new Error("Post not found");
   }
 
-  // ✅ Optionally remove Cloudinary cover
+  // Remove cover from Cloudinary if applicable
   if (post.coverImage && post.coverImage.includes("res.cloudinary.com")) {
-    const publicIdMatch = post.coverImage.match(/upload\/(?:v\d+\/)?(.+)\.\w+$/);
+    const publicIdMatch = post.coverImage.match(/\/upload\/(?:v\d+\/)?([^\.]+)/);
     if (publicIdMatch) {
       const publicId = publicIdMatch[1];
       try {

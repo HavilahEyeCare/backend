@@ -8,11 +8,20 @@ import { protect, adminOnly } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+/**
+ * Public routes
+ * - POST / → add a new testimonial
+ * - GET  / → get testimonials (supports pagination & limit)
+ */
 router.route("/")
-  .post(createTestimonial)   // Public: patients can add
-  .get(getTestimonials);     // Public: everyone can see
+  .post(createTestimonial)  // Public: patients/clients can add
+  .get(getTestimonials);    // Public: anyone can view
 
+/**
+ * Private/Admin routes
+ * - DELETE /:id → delete a testimonial
+ */
 router.route("/:id")
-  .delete(protect,adminOnly, deleteTestimonial); // Admin only
+  .delete(protect, adminOnly, deleteTestimonial); // Admin only
 
 export default router;
