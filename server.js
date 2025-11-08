@@ -93,7 +93,7 @@ app.use(notFound);
 app.use(errorHandler);
 
 // =================== KEEP BACKEND AWAKE ===================
-const WAKE_URL = process.env.RENDER_URL || "https://backend-x0u1.onrender.com";
+const WAKE_URL = process.env.RENDER_URL ;
 setInterval(async () => {
   try {
     await axios.get(WAKE_URL);
