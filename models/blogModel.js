@@ -37,7 +37,7 @@ const blogPostSchema = new mongoose.Schema(
     coverImage: {
       type: String,
       default:
-        "https://res.cloudinary.com/your_cloud_name/image/upload/v1/havilah_blog/default-cover.jpg",
+        "https://res.cloudinary.com/djyunjvjh/image/upload/v1762777621/default-cover.jpg_sprflp.jpg",
     },
 
     category: {
