@@ -20,7 +20,7 @@ export const createPost = asyncHandler(async (req, res) => {
     throw new Error("Category is required");
   }
 
-  // Parse sections JSON
+  // Parse sections if sent as string
   let parsedSections = [];
   if (sections) {
     try {
@@ -32,7 +32,7 @@ export const createPost = asyncHandler(async (req, res) => {
     }
   }
 
-  // Upload coverImage if present
+  // Upload cover image to Cloudinary if a file is provided
   let uploadedCover = "";
   if (req.files && req.files.coverImage) {
     try {
@@ -40,30 +40,12 @@ export const createPost = asyncHandler(async (req, res) => {
         folder: "havilah_blog/covers",
         transformation: [{ quality: "auto", fetch_format: "auto" }],
       });
-      uploadedCover = result.secure_url;
+      uploadedCover = result.secure_url; // this URL is returned
     } catch (err) {
       console.error("Cloudinary cover upload failed:", err.message);
       res.status(500);
       throw new Error("Failed to upload cover image");
     }
-  }
-
-  // Upload multiple section images if present
-  if (req.files && req.files.sectionImages) {
-    const sectionImages = await Promise.all(
-      req.files.sectionImages.map(async (file) => {
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: "havilah_blog/sections",
-          transformation: [{ quality: "auto", fetch_format: "auto" }],
-        });
-        return result.secure_url;
-      })
-    );
-
-    // Attach section images to the sections array
-    parsedSections.forEach((section, idx) => {
-      section.images = sectionImages[idx] ? [sectionImages[idx]] : [];
-    });
   }
 
   const slug = slugify(title, { lower: true, strict: true }) + "-" + Date.now();
@@ -73,7 +55,7 @@ export const createPost = asyncHandler(async (req, res) => {
     slug,
     excerpt: excerpt || "",
     category,
-    sections: parsedSections,
+    sections: parsedSections, // already contains section image URLs from frontend
     coverImage: uploadedCover,
     author: req.user._id,
   });
@@ -82,26 +64,7 @@ export const createPost = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Get single post by slug
- * @route   GET /blog/:slug
- * @access  Public
- */
-export const getPostBySlug = asyncHandler(async (req, res) => {
-  const post = await BlogPost.findOne({ slug: req.params.slug }).populate(
-    "author",
-    "name email"
-  );
-
-  if (!post) {
-    res.status(404);
-    throw new Error("Post not found");
-  }
-
-  res.json(post);
-});
-
-/**
- * @desc    Update a post
+ * @desc    Update a blog post
  * @route   PUT /blog/:id
  * @access  Private (staff/admin)
  */
@@ -118,6 +81,7 @@ export const updatePost = asyncHandler(async (req, res) => {
     post.title = title;
     post.slug = slugify(title, { lower: true, strict: true }) + "-" + Date.now();
   }
+
   if (excerpt !== undefined) post.excerpt = excerpt;
   if (category) post.category = category;
 
@@ -125,36 +89,26 @@ export const updatePost = asyncHandler(async (req, res) => {
     try {
       post.sections =
         typeof sections === "string" ? JSON.parse(sections) : sections;
+      // section images are preserved as URLs from frontend
     } catch {
       res.status(400);
       throw new Error("Invalid sections format");
     }
   }
 
-  // Cover image
+  // Cover image: upload new file if provided
   if (req.files && req.files.coverImage) {
-    const result = await cloudinary.uploader.upload(req.files.coverImage[0].path, {
-      folder: "havilah_blog/covers",
-      transformation: [{ quality: "auto", fetch_format: "auto" }],
-    });
-    post.coverImage = result.secure_url;
-  }
-
-  // Section images
-  if (req.files && req.files.sectionImages) {
-    const sectionImages = await Promise.all(
-      req.files.sectionImages.map(async (file) => {
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: "havilah_blog/sections",
-          transformation: [{ quality: "auto", fetch_format: "auto" }],
-        });
-        return result.secure_url;
-      })
-    );
-
-    post.sections.forEach((section, idx) => {
-      section.images = sectionImages[idx] ? [sectionImages[idx]] : [];
-    });
+    try {
+      const result = await cloudinary.uploader.upload(req.files.coverImage[0].path, {
+        folder: "havilah_blog/covers",
+        transformation: [{ quality: "auto", fetch_format: "auto" }],
+      });
+      post.coverImage = result.secure_url;
+    } catch (err) {
+      console.error("Cloudinary cover upload failed:", err.message);
+      res.status(500);
+      throw new Error("Failed to upload cover image");
+    }
   }
 
   const updatedPost = await post.save();
@@ -181,12 +135,30 @@ export const getPosts = asyncHandler(async (req, res) => {
     .skip((page - 1) * limit)
     .limit(limit);
 
-  res.json({ posts, page, pages: Math.ceil(count / limit) });
+  res.json({ posts, page, pages: Math.ceil(count / limit), total: count });
 });
 
+/**
+ * @desc    Get single post by slug
+ * @route   GET /blog/:slug
+ * @access  Public
+ */
+export const getPostBySlug = asyncHandler(async (req, res) => {
+  const post = await BlogPost.findOne({ slug: req.params.slug }).populate(
+    "author",
+    "name email"
+  );
+
+  if (!post) {
+    res.status(404);
+    throw new Error("Post not found");
+  }
+
+  res.json(post);
+});
 
 /**
- * @desc    Delete a post
+ * @desc    Delete a blog post
  * @route   DELETE /blog/:id
  * @access  Private (admin only)
  */
@@ -197,7 +169,7 @@ export const deletePost = asyncHandler(async (req, res) => {
     throw new Error("Post not found");
   }
 
-  // Remove cover from Cloudinary if applicable
+  // Optionally remove cover image from Cloudinary
   if (post.coverImage && post.coverImage.includes("res.cloudinary.com")) {
     const publicIdMatch = post.coverImage.match(/\/upload\/(?:v\d+\/)?([^\.]+)/);
     if (publicIdMatch) {
