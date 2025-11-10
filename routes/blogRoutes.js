@@ -1,5 +1,4 @@
 import express from "express";
-import { protect, adminOnly } from "../middleware/authMiddleware.js";
 import {
   createPost,
   getPosts,
@@ -7,40 +6,17 @@ import {
   updatePost,
   deletePost,
 } from "../controllers/blogController.js";
-import upload from "../middleware/uploadMiddleware.js"; // multer middleware
+import { protect, admin } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// GET all posts
+// Public routes
 router.get("/", getPosts);
+router.get("/:slug", getPostBySlug);
 
-// GET a single post by slug
-router.get("/slug/:slug", getPostBySlug);
-
-// POST create post (staff/admin) with file uploads
-// coverImage -> single, sectionImages -> multiple
-router.post(
-  "/",
-  protect,
-  upload.fields([
-    { name: "coverImage", maxCount: 1 },
-    { name: "sectionImages", maxCount: 20 },
-  ]),
-  createPost
-);
-
-// PUT update post (staff/admin) with optional file uploads
-router.put(
-  "/:id",
-  protect,
-  upload.fields([
-    { name: "coverImage", maxCount: 1 },
-    { name: "sectionImages", maxCount: 20 },
-  ]),
-  updatePost
-);
-
-// DELETE post (admin only)
-router.delete("/:id", protect, adminOnly, deletePost);
+// Protected routes (staff/admin only)
+router.post("/", protect, admin, createPost);
+router.put("/:id", protect, admin, updatePost);
+router.delete("/:id", protect, admin, deletePost);
 
 export default router;

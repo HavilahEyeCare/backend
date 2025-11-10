@@ -1,16 +1,16 @@
 import mongoose from "mongoose";
 import slugify from "slugify";
 
-// Subdocument schema for sections (matches PostEditor structure)
+// Subdocument schema for sections (same structure as in your PostEditor)
 const sectionSchema = new mongoose.Schema({
   heading: { type: String, trim: true },
   subheading: { type: String, trim: true },
   content: { type: String, trim: true },
   list: [{ type: String, trim: true }],
-  images: [{ type: String, trim: true }], // store Cloudinary URLs
+  images: [{ type: String, trim: true }], // Stores Cloudinary image URLs
 });
 
-// Main BlogPost schema
+// Main blog post schema
 const blogPostSchema = new mongoose.Schema(
   {
     title: {
@@ -36,8 +36,7 @@ const blogPostSchema = new mongoose.Schema(
 
     coverImage: {
       type: String,
-      // default:
-      //   "https://res.cloudinary.com/djyunjvjh/image/upload/v1762777621/default-cover.jpg_sprflp.jpg",
+      required: [true, "Please upload a cover image"], // cover must now always be provided
     },
 
     category: {
@@ -67,12 +66,6 @@ const blogPostSchema = new mongoose.Schema(
     published: {
       type: Boolean,
       default: true,
-    },
-
-    // Optional: keep Cloudinary public_id for deletion support
-    coverPublicId: {
-      type: String,
-      trim: true,
     },
   },
   { timestamps: true }
