@@ -15,8 +15,8 @@ router.get("/", getPosts);
 router.get("/:slug", getPostBySlug);
 
 // Protected routes (staff/admin only)
-router.post("/", protect, adminOnly, createPost);
-router.put("/:id", protect, adminOnly, updatePost);
+router.post("/", protect, createPost);
+router.put("/:id", protect, updatePost);
 router.delete("/:id", protect, adminOnly, deletePost);
 
 export default router;
