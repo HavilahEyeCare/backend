@@ -19,7 +19,7 @@ connectDB();
 
 const app = express();
 
-// =================== MIDDLEWARE ===================
+// ========== MIDDLEWARE ==========
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
@@ -27,9 +27,9 @@ if (process.env.NODE_ENV !== "production") {
   app.use(morgan("dev"));
 }
 
-// =================== CORS ===================
+// ========== CORS ==========
 const allowedOrigins = [
-  "https://havilaheyecare.com",
+  "https://havilaheyecare.com",   // Your DomainKing frontend domain
   "https://www.havilaheyecare.com",
   "http://localhost:5173",
 ];
@@ -45,23 +45,23 @@ app.use(
   })
 );
 
-// =================== API ROUTES ===================
+// ========== API ROUTES ==========
 app.use("/auth", authRoutes);
 app.use("/blog", blogRoutes);
 app.use("/testimonials", testimonialRoutes);
 app.use("/upload", uploadRoutes);
 
-// =================== BASE TEST ROUTE ===================
+// ========== BASE TEST ROUTE ==========
 app.get("/", (req, res) => {
   res.send("✅ Havilah Eye Care API is running...");
 });
 
-// =================== ERROR HANDLERS ===================
+// ========== ERROR HANDLERS ==========
 app.use(notFound);
 app.use(errorHandler);
 
-// =================== KEEP BACKEND AWAKE ===================
-const WAKE_URL = process.env.RENDER_URL;
+// ========== KEEP BACKEND AWAKE ==========
+const WAKE_URL = process.env.RENDER_URL; // optional
 setInterval(async () => {
   try {
     await axios.get(WAKE_URL);
@@ -71,7 +71,7 @@ setInterval(async () => {
   }
 }, 14 * 60 * 1000);
 
-// =================== START SERVER ===================
+// ========== START SERVER ==========
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
