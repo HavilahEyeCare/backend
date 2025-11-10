@@ -6,7 +6,7 @@ import {
   updatePost,
   deletePost,
 } from "../controllers/blogController.js";
-import { protect, admin } from "../middleware/authMiddleware.js";
+import { protect, adminOnly } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -15,8 +15,8 @@ router.get("/", getPosts);
 router.get("/:slug", getPostBySlug);
 
 // Protected routes (staff/admin only)
-router.post("/", protect, admin, createPost);
-router.put("/:id", protect, admin, updatePost);
-router.delete("/:id", protect, admin, deletePost);
+router.post("/", protect, adminOnly, createPost);
+router.put("/:id", protect, adminOnly, updatePost);
+router.delete("/:id", protect, adminOnly, deletePost);
 
 export default router;
