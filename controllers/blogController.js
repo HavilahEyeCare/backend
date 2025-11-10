@@ -9,18 +9,18 @@ import cloudinary from "../config/cloudinaryConfig.js";
  * @access  Private (staff/admin)
  */
 export const createPost = asyncHandler(async (req, res) => {
-  const { title, sections, excerpt, category, coverImage } = req.body;
+  const { title, sections, excerpt, category } = req.body;
 
   if (!title) {
     res.status(400);
     throw new Error("Title is required");
   }
-
   if (!category) {
     res.status(400);
     throw new Error("Category is required");
   }
 
+  // Parse sections JSON
   let parsedSections = [];
   if (sections) {
     try {
@@ -32,23 +32,41 @@ export const createPost = asyncHandler(async (req, res) => {
     }
   }
 
-  let uploadedCover = coverImage;
-
-  if (coverImage && coverImage.startsWith("data:image")) {
+  // Upload coverImage if present
+  let uploadedCover = "";
+  if (req.files && req.files.coverImage) {
     try {
-      const uploadResult = await cloudinary.uploader.upload(coverImage, {
+      const result = await cloudinary.uploader.upload(req.files.coverImage[0].path, {
         folder: "havilah_blog/covers",
         transformation: [{ quality: "auto", fetch_format: "auto" }],
       });
-      uploadedCover = uploadResult.secure_url;
+      uploadedCover = result.secure_url;
     } catch (err) {
-      console.error("Cloudinary upload failed:", err.message);
+      console.error("Cloudinary cover upload failed:", err.message);
       res.status(500);
       throw new Error("Failed to upload cover image");
     }
   }
 
-  const slug = slugify(title, { lower: true, strict: true });
+  // Upload multiple section images if present
+  if (req.files && req.files.sectionImages) {
+    const sectionImages = await Promise.all(
+      req.files.sectionImages.map(async (file) => {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "havilah_blog/sections",
+          transformation: [{ quality: "auto", fetch_format: "auto" }],
+        });
+        return result.secure_url;
+      })
+    );
+
+    // Attach section images to the sections array
+    parsedSections.forEach((section, idx) => {
+      section.images = sectionImages[idx] ? [sectionImages[idx]] : [];
+    });
+  }
+
+  const slug = slugify(title, { lower: true, strict: true }) + "-" + Date.now();
 
   const post = await BlogPost.create({
     title,
@@ -61,29 +79,6 @@ export const createPost = asyncHandler(async (req, res) => {
   });
 
   res.status(201).json(post);
-});
-
-/**
- * @desc    Get all posts with pagination
- * @route   GET /blog
- * @access  Public
- */
-export const getPosts = asyncHandler(async (req, res) => {
-  const page = Number(req.query.page) || 1;
-  const limit = Number(req.query.limit) || 10;
-  const sort =
-    req.query.sort === "newest" || !req.query.sort
-      ? { createdAt: -1 }
-      : { createdAt: 1 };
-
-  const count = await BlogPost.countDocuments();
-  const posts = await BlogPost.find({})
-    .populate("author", "name email")
-    .sort(sort)
-    .skip((page - 1) * limit)
-    .limit(limit);
-
-  res.json({ posts, page, pages: Math.ceil(count / limit) });
 });
 
 /**
@@ -111,7 +106,7 @@ export const getPostBySlug = asyncHandler(async (req, res) => {
  * @access  Private (staff/admin)
  */
 export const updatePost = asyncHandler(async (req, res) => {
-  const { title, sections, excerpt, category, coverImage } = req.body;
+  const { title, sections, excerpt, category } = req.body;
 
   const post = await BlogPost.findById(req.params.id);
   if (!post) {
@@ -121,9 +116,8 @@ export const updatePost = asyncHandler(async (req, res) => {
 
   if (title) {
     post.title = title;
-    post.slug = slugify(title, { lower: true, strict: true });
+    post.slug = slugify(title, { lower: true, strict: true }) + "-" + Date.now();
   }
-
   if (excerpt !== undefined) post.excerpt = excerpt;
   if (category) post.category = category;
 
@@ -137,25 +131,59 @@ export const updatePost = asyncHandler(async (req, res) => {
     }
   }
 
-  if (coverImage && coverImage.startsWith("data:image")) {
-    try {
-      const uploadResult = await cloudinary.uploader.upload(coverImage, {
-        folder: "havilah_blog/covers",
-        transformation: [{ quality: "auto", fetch_format: "auto" }],
-      });
-      post.coverImage = uploadResult.secure_url;
-    } catch (err) {
-      console.error("Cloudinary upload failed:", err.message);
-      res.status(500);
-      throw new Error("Failed to upload cover image");
-    }
-  } else if (coverImage) {
-    post.coverImage = coverImage;
+  // Cover image
+  if (req.files && req.files.coverImage) {
+    const result = await cloudinary.uploader.upload(req.files.coverImage[0].path, {
+      folder: "havilah_blog/covers",
+      transformation: [{ quality: "auto", fetch_format: "auto" }],
+    });
+    post.coverImage = result.secure_url;
+  }
+
+  // Section images
+  if (req.files && req.files.sectionImages) {
+    const sectionImages = await Promise.all(
+      req.files.sectionImages.map(async (file) => {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "havilah_blog/sections",
+          transformation: [{ quality: "auto", fetch_format: "auto" }],
+        });
+        return result.secure_url;
+      })
+    );
+
+    post.sections.forEach((section, idx) => {
+      section.images = sectionImages[idx] ? [sectionImages[idx]] : [];
+    });
   }
 
   const updatedPost = await post.save();
   res.json(updatedPost);
 });
+
+/**
+ * @desc    Get all posts with pagination
+ * @route   GET /blog
+ * @access  Public
+ */
+export const getPosts = asyncHandler(async (req, res) => {
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
+  const sort =
+    req.query.sort === "newest" || !req.query.sort
+      ? { createdAt: -1 }
+      : { createdAt: 1 };
+
+  const count = await BlogPost.countDocuments();
+  const posts = await BlogPost.find({})
+    .populate("author", "name email")
+    .sort(sort)
+    .skip((page - 1) * limit)
+    .limit(limit);
+
+  res.json({ posts, page, pages: Math.ceil(count / limit) });
+});
+
 
 /**
  * @desc    Delete a post
