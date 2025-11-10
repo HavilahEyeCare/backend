@@ -14,9 +14,6 @@ import axios from "axios";
 import notFound from "./middleware/notFound.js";
 import errorHandler from "./middleware/errorHandler.js";
 
-import path from "path";
-import { fileURLToPath } from "url";
-
 dotenv.config();
 connectDB();
 
@@ -32,9 +29,9 @@ if (process.env.NODE_ENV !== "production") {
 
 // =================== CORS ===================
 const allowedOrigins = [
-  "http://localhost:5173", 
   "https://havilaheyecare.com",
   "https://www.havilaheyecare.com",
+  "http://localhost:5173",
 ];
 
 app.use(
@@ -48,7 +45,7 @@ app.use(
   })
 );
 
-// =================== ROUTES (NO /api PREFIX) ===================
+// =================== API ROUTES ===================
 app.use("/auth", authRoutes);
 app.use("/blog", blogRoutes);
 app.use("/testimonials", testimonialRoutes);
@@ -59,19 +56,6 @@ app.get("/", (req, res) => {
   res.send("✅ Havilah Eye Care API is running...");
 });
 
-// =================== SERVE REACT IN PRODUCTION ===================
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-if (process.env.NODE_ENV === "production") {
-  const frontendPath = path.join(__dirname, "public_html");
-  app.use(express.static(frontendPath));
-
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(frontendPath, "index.html"));
-  });
-}
-
 // =================== ERROR HANDLERS ===================
 app.use(notFound);
 app.use(errorHandler);
@@ -81,7 +65,7 @@ const WAKE_URL = process.env.RENDER_URL;
 setInterval(async () => {
   try {
     await axios.get(WAKE_URL);
-    console.log("🌤️ Render backend pinged to stay awake");
+    console.log("🌤️ Backend pinged to stay awake");
   } catch (err) {
     console.log("⚠️ Wake-up ping failed:", err.message);
   }
