@@ -36,8 +36,8 @@ const blogPostSchema = new mongoose.Schema(
 
     coverImage: {
       type: String,
-      default:
-        "https://res.cloudinary.com/djyunjvjh/image/upload/v1762777621/default-cover.jpg_sprflp.jpg",
+      // default:
+      //   "https://res.cloudinary.com/djyunjvjh/image/upload/v1762777621/default-cover.jpg_sprflp.jpg",
     },
 
     category: {
